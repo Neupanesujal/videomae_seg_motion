@@ -1,0 +1,55 @@
+experiment:
+  name: "smoke_test_pretraining"
+  phase: "smoke_test"
+  description: "Short end-to-end VideoMAE pretraining test"
+
+model:
+  name: "pretrain_videomae_base_patch16_224"
+  decoder_depth: 4
+  drop_path: 0.0
+  use_checkpoint: false
+
+video:
+  input_size: 224
+  num_frames: 16
+  sampling_rate: 4
+
+masking:
+  type: "tube"
+  strategy: "random"
+  ratio: 0.75
+
+dataset:
+  data_path: "datasets/ucfTrainTestlist/experiment1_pretrain.txt"
+
+optimizer:
+  type: "adamw"
+  lr: 0.0003
+  min_lr: 0.00001
+  warmup_lr: 0.000001
+  warmup_epochs: 1
+  warmup_steps: -1
+  weight_decay: 0.05
+  weight_decay_end: null
+  opt_eps: 0.00000001
+  opt_betas:
+    - 0.9
+    - 0.95
+  clip_grad: null
+  momentum: 0.9
+
+training:
+  epochs: 17
+  batch_size: 8
+  save_ckpt_freq: 2
+
+dataloader:
+  num_workers: 4
+  pin_mem: true
+
+seed: 0
+
+pretrained:
+  path: "checkpoints/pretrained/videomae_v1_base_kinetics_e1600.pth"
+
+device: "cuda"

@@ -1,0 +1,6 @@
+experiment:
+  name: "exp03_motion"
+  description: "Motion-aware tubelet masking"
+
+masking:
+  strategy: "motion"

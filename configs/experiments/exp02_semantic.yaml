@@ -1,0 +1,6 @@
+experiment:
+  name: "exp02_semantic"
+  description: "Semantic-aware tubelet masking"
+
+masking:
+  strategy: "semantic"

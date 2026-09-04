@@ -1,0 +1,59 @@
+experiment:
+  phase: "experiment1"
+  name: "exp01_random"
+  description: "VideoMAE V1 random tubelet masking baseline"
+
+model:
+  name: "pretrain_videomae_base_patch16_224"
+  decoder_depth: 4
+  drop_path: 0.0
+  use_checkpoint: true
+
+video:
+  input_size: 224
+  num_frames: 16
+  sampling_rate: 4
+
+masking:
+  type: "tube"
+  ratio: 0.75
+
+dataset:
+  data_path: "datasets/ucfTrainTestlist/experiment1_pretrain.txt"
+
+optimizer:
+  type: "adamw"
+  opt_eps: 0.00000001
+
+  opt_betas:
+    - 0.9
+    - 0.95
+
+  lr: 0.0003
+  min_lr: 0.00001
+  warmup_lr: 0.000001
+
+  warmup_epochs: 10
+  warmup_steps: -1
+
+  weight_decay: 0.05
+  weight_decay_end: null
+
+  clip_grad: null
+  momentum: 0.9
+
+training:
+  batch_size: 8
+  epochs: 100
+  save_ckpt_freq: 20
+
+dataloader:
+  num_workers: 10
+  pin_mem: true
+
+seed: 0
+
+pretrained:
+  path: "checkpoints/pretrained/videomae_v1_base_kinetics_e1600.pth"
+
+device: "cuda"

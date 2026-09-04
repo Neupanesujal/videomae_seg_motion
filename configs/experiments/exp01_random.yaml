@@ -1,0 +1,4 @@
+experiment:
+  phase: "experiment1"
+  name: "exp01_random"
+  description: "VideoMAE V1 random tubelet masking baseline"

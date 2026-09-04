@@ -1,0 +1,9 @@
+experiment:
+  name: "exp04_semantic_motion"
+  description: "Combined semantic and motion-aware tubelet masking"
+
+masking:
+  strategy: "semantic_motion"
+
+  semantic_weight: 0.5
+  motion_weight: 0.5
