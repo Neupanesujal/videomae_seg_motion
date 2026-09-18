@@ -34,7 +34,7 @@ def build_command(
 
     command = [
         sys.executable,
-        "run_mae_pretraining.py",
+        str(VIDEOMAE_DIR / "run_mae_pretraining.py"),
 
         "--batch_size",
         str(training["batch_size"]),
@@ -208,7 +208,7 @@ def main():
 
     subprocess.run(
         command,
-        cwd=VIDEOMAE_DIR,
+        cwd=PROJECT_ROOT,
         check=True,
     )
 
