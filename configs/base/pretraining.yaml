@@ -19,7 +19,7 @@ masking:
   ratio: 0.75
 
 dataset:
-  data_path: "datasets/ucfTrainTestlist/experiment1_pretrain.txt"
+  data_path: "datasets/ucfTrainTestlist/trainlist01.txt"
 
 optimizer:
   type: "adamw"
