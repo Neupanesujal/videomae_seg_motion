@@ -38,7 +38,7 @@ class DataAugmentationForVideoMAE(object):
 def build_pretraining_dataset(args):
     transform = DataAugmentationForVideoMAE(args)
     dataset = VideoMAE(
-        root=None,
+        root=os.path.abspath("datasets/UCF-101"),
         setting=args.data_path,
         video_ext='mp4',
         is_color=True,

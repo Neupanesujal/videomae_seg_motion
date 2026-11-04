@@ -1,6 +1,5 @@
 import os
 import numpy as np
-from numpy.lib.function_base import disp
 import torch
 import decord
 from PIL import Image
@@ -11,6 +10,28 @@ from decord import VideoReader, cpu
 from torch.utils.data import Dataset
 import video_transforms as video_transforms 
 import volume_transforms as volume_transforms
+
+def resolve_video_path(video_path, dataset_root):
+    """
+    Resolve video paths from either:
+    1. Original UCF101 split: ApplyEyeMakeup/video.avi
+    2. Project-relative path: datasets/UCF-101/ApplyEyeMakeup/video.avi
+    3. Absolute path
+    """
+    video_path = os.path.expanduser(str(video_path))
+
+    # Absolute paths are already resolved.
+    if os.path.isabs(video_path):
+        return video_path
+
+    # Support paths that already work relative to the project root.
+    if os.path.exists(video_path):
+        return os.path.abspath(video_path)
+
+    # Otherwise, resolve relative to the dataset root.
+    resolved_path = os.path.join(dataset_root, video_path)
+
+    return os.path.abspath(resolved_path)
 
 class VideoClsDataset(Dataset):
     """Load your own video classification dataset."""
@@ -221,7 +242,7 @@ class VideoClsDataset(Dataset):
 
     def loadvideo_decord(self, sample, sample_rate_scale=1):
         """Load video content using Decord"""
-        fname = sample
+        fname = resolve_video_path(sample, self.data_path)
 
         if not (os.path.exists(fname)):
             return []
@@ -497,19 +518,37 @@ class VideoMAE(torch.utils.data.Dataset):
 
     def _make_dataset(self, directory, setting):
         if not os.path.exists(setting):
-            raise(RuntimeError("Setting file %s doesn't exist. Check opt.train-list and opt.val-list. " % (setting)))
+            raise RuntimeError(
+                "Setting file %s doesn't exist. Check opt.train-list and opt.val-list."
+                % setting
+            )
+
         clips = []
+
         with open(setting) as split_f:
-            data = split_f.readlines()
-            for line in data:
-                line_info = line.split(' ')
-                # line format: video_path, video_duration, video_label
+            for line in split_f:
+                line = line.strip()
+
+                if not line:
+                    continue
+
+                line_info = line.split()
+
                 if len(line_info) < 2:
-                    raise(RuntimeError('Video input format is not correct, missing one or more element. %s' % line))
-                clip_path = os.path.join(line_info[0])
+                    raise RuntimeError(
+                        'Video input format is not correct: %s' % line
+                    )
+
+                clip_path = resolve_video_path(line_info[0], directory)
                 target = int(line_info[1])
-                item = (clip_path, target)
-                clips.append(item)
+
+                if not os.path.isfile(clip_path):
+                    raise FileNotFoundError(
+                        f"Video not found: {clip_path}"
+                    )
+
+                clips.append((clip_path, target))
+
         return clips
 
     def _sample_train_indices(self, num_frames):
