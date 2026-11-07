@@ -159,7 +159,7 @@ SUMMARY_ROOT = (
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 # Use frame t -> frame t + GAP
-GAP = 2
+GAP = 4
 
 # RAFT iterations.
 # torchvision RAFT uses the final prediction by default.
