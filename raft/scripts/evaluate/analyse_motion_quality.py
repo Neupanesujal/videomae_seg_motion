@@ -15,11 +15,11 @@ from datetime import datetime
 # ============================================================
 
 NPZ_ROOT = Path(
-    "raft/output_datasets/motion_npz"
+    "raft/output_datasets_motion/motion_npz"
 )
 
 OUTPUT_ROOT = Path(
-    "raft/output_datasets/motion_quality_analysis"
+    "raft/output_datasets_motion/motion_quality_analysis"
 )
 
 CATEGORY_DIR = OUTPUT_ROOT / "categories"
