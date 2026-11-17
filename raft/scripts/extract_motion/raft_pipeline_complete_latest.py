@@ -741,6 +741,39 @@ def frame_to_tensor(frame):
 
 
 # ============================================================
+# RAFT INPUT PADDING
+# ============================================================
+
+def pad_frame_to_multiple_of_8(frame):
+    """
+    Pad a frame on the bottom and/or right so both dimensions
+    are divisible by 8. Existing image pixels are not resized.
+
+    Returns:
+        padded_frame, original_height, original_width
+    """
+
+    original_h, original_w = frame.shape[:2]
+
+    pad_h = (8 - original_h % 8) % 8
+    pad_w = (8 - original_w % 8) % 8
+
+    if pad_h == 0 and pad_w == 0:
+        return frame, original_h, original_w
+
+    padded_frame = cv2.copyMakeBorder(
+        frame,
+        top=0,
+        bottom=pad_h,
+        left=0,
+        right=pad_w,
+        borderType=cv2.BORDER_REPLICATE
+    )
+
+    return padded_frame, original_h, original_w
+
+
+# ============================================================
 # RAFT FLOW
 # ============================================================
 
@@ -752,12 +785,22 @@ def calculate_raft_flow(
     frame2
 ):
 
+    original_h, original_w = frame1.shape[:2]
+
+    if frame2.shape[:2] != (original_h, original_w):
+        raise ValueError(
+            "Both frames in a RAFT pair must have the same height and width."
+        )
+
+    padded_frame1, _, _ = pad_frame_to_multiple_of_8(frame1)
+    padded_frame2, _, _ = pad_frame_to_multiple_of_8(frame2)
+
     img1 = frame_to_tensor(
-        frame1
+        padded_frame1
     )
 
     img2 = frame_to_tensor(
-        frame2
+        padded_frame2
     )
 
     img1 = img1.unsqueeze(0)
@@ -791,7 +834,9 @@ def calculate_raft_flow(
 
     flow = flow.cpu().numpy()
 
-    # [2, H, W]
+    # Remove padding and restore the original [2, H, W] dimensions.
+    flow = flow[:, :original_h, :original_w]
+
     return flow.astype(
         np.float32
     )
@@ -829,13 +874,28 @@ def calculate_raft_flow_batch(
     if len(frames1) == 0:
         return []
 
+    original_h, original_w = frames1[0].shape[:2]
+
     tensors1 = []
     tensors2 = []
 
     for frame1, frame2 in zip(frames1, frames2):
 
-        img1 = frame_to_tensor(frame1)
-        img2 = frame_to_tensor(frame2)
+        if frame1.shape[:2] != (original_h, original_w):
+            raise ValueError(
+                "All frames in a RAFT batch must have the same height and width."
+            )
+
+        if frame2.shape[:2] != (original_h, original_w):
+            raise ValueError(
+                "Both frames in every RAFT pair must have the same height and width."
+            )
+
+        padded_frame1, _, _ = pad_frame_to_multiple_of_8(frame1)
+        padded_frame2, _, _ = pad_frame_to_multiple_of_8(frame2)
+
+        img1 = frame_to_tensor(padded_frame1)
+        img2 = frame_to_tensor(padded_frame2)
 
         tensors1.append(img1)
         tensors2.append(img2)
@@ -855,11 +915,11 @@ def calculate_raft_flow_batch(
 
     flows = predictions[-1]
 
-    # [B, 2, H, W] -> list of [2, H, W]
+    # [B, 2, padded_H, padded_W] -> original [2, H, W] per frame.
     flows = flows.detach().cpu().numpy()
 
     return [
-        flow.astype(np.float32)
+        flow[:, :original_h, :original_w].astype(np.float32)
         for flow in flows
     ]
 
