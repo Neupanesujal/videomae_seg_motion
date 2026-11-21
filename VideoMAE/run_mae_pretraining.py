@@ -242,6 +242,17 @@ def get_args():
         default=4
     )
 
+    # Motion-aware experiment controls (B0 remains motion-disabled by default).
+    parser.add_argument('--motion_enabled', action='store_true', help='Load and align precomputed RAFT motion')
+    parser.add_argument('--motion_root', type=str, default='raft/output_datasets_motion/motion_npz')
+    parser.add_argument('--motion_gap', type=int, default=4)
+    parser.add_argument('--motion_missing_policy', choices=['zero','error'], default='zero')
+    parser.add_argument('--motion_guided_mask', action='store_true', help='Bias tube masking toward high motion (B2/B3)')
+    parser.add_argument('--motion_weighted_loss', action='store_true', help='Use motion-weighted reconstruction loss (B1/B3)')
+    parser.add_argument('--motion_alpha', type=float, default=1.0)
+    parser.add_argument('--motion_beta', type=float, default=2.0)
+    parser.add_argument('--motion_percentile', type=float, default=99.0)
+
     parser.add_argument(
         '--output_dir',
         default='',
@@ -645,6 +656,7 @@ def main(args):
             wd_schedule_values=wd_schedule_values,
             patch_size=patch_size[0],
             normlize_target=args.normlize_target,
+            args=args,
         )
 
         # ====================================================

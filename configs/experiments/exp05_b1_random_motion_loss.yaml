@@ -1,0 +1,20 @@
+experiment:
+  name: "exp05_b1_random_motion_loss"
+  description: "Random tube masking with motion-weighted reconstruction loss"
+
+masking:
+  type: "tube"
+  ratio: 0.75
+
+motion:
+  enabled: true
+  root: "raft/output_datasets_motion/motion_npz"
+  gap: 4
+  missing_policy: "zero"
+  percentile: 99.0
+
+  guided_mask: false
+  weighted_loss: true
+
+  alpha: 1.0
+  beta: 2.0

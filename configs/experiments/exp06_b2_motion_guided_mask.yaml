@@ -1,0 +1,20 @@
+experiment:
+  name: "exp06_b2_motion_guided_mask"
+  description: "Motion-guided tube masking with uniform reconstruction loss"
+
+masking:
+  type: "tube"
+  ratio: 0.75
+
+motion:
+  enabled: true
+  root: "raft/output_datasets_motion/motion_npz"
+  gap: 4
+  missing_policy: "zero"
+  percentile: 99.0
+
+  guided_mask: true
+  weighted_loss: false
+
+  alpha: 1.0
+  beta: 2.0

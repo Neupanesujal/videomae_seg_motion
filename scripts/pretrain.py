@@ -130,6 +130,41 @@ def build_command(
     if dataloader["pin_mem"]:
         command.append("--pin_mem")
 
+    
+    # --------------------------------------------------
+    # Optional motion-aware pretraining configuration
+    # --------------------------------------------------
+    motion = config.get("motion", {})
+
+    if motion.get("enabled", False):
+        command.extend([
+            "--motion_enabled",
+            "--motion_root",
+            str(resolve_path(motion.get(
+                "root",
+                "raft/output_datasets_motion/motion_npz"
+            ))),
+            "--motion_gap",
+            str(motion.get("gap", 4)),
+            "--motion_missing_policy",
+            str(motion.get("missing_policy", "zero")),
+            "--motion_percentile",
+            str(motion.get("percentile", 99.0)),
+        ])
+
+        if motion.get("guided_mask", False):
+            command.append("--motion_guided_mask")
+
+        if motion.get("weighted_loss", False):
+            command.append("--motion_weighted_loss")
+
+        command.extend([
+            "--motion_alpha",
+            str(motion.get("alpha", 1.0)),
+            "--motion_beta",
+            str(motion.get("beta", 2.0)),
+        ])
+
     if model["use_checkpoint"]:
         command.append(
             "--use_checkpoint"

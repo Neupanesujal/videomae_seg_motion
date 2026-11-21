@@ -1,6 +1,6 @@
 experiment:
   name: "exp03_motion"
-  description: "Motion-aware tubelet masking"
+  description: "Motion-aware tubelet masking and reconstruction loss"
 
 masking:
   strategy: "motion"

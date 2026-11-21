@@ -460,7 +460,11 @@ class VideoMAE(torch.utils.data.Dataset):
                  temporal_jitter=False,
                  video_loader=False,
                  use_decord=False,
-                 lazy_init=False):
+                 lazy_init=False,
+                 motion_enabled=False,
+                 motion_root=None,
+                 motion_gap=4,
+                 motion_missing_policy="zero"):
 
         super(VideoMAE, self).__init__()
         self.root = root
@@ -481,6 +485,10 @@ class VideoMAE(torch.utils.data.Dataset):
         self.use_decord = use_decord
         self.transform = transform
         self.lazy_init = lazy_init
+        self.motion_enabled = motion_enabled
+        self.motion_root = motion_root
+        self.motion_gap = motion_gap
+        self.motion_missing_policy = motion_missing_policy
 
 
         if not self.lazy_init:
@@ -506,12 +514,67 @@ class VideoMAE(torch.utils.data.Dataset):
 
         segment_indices, skip_offsets = self._sample_train_indices(duration)
 
-        images = self._video_TSN_decord_batch_loader(directory, decord_vr, duration, segment_indices, skip_offsets)
+        images, frame_id_list = self._video_TSN_decord_batch_loader(
+            directory,
+            decord_vr,
+            duration,
+            segment_indices,
+            skip_offsets
+        )
 
-        process_data, mask = self.transform((images, None)) # T*C,H,W
-        process_data = process_data.view((self.new_length, 3) + process_data.size()[-2:]).transpose(0,1)  # T*C,H,W -> T,C,H,W -> C,T,H,W
-        
-        return (process_data, mask)
+        motion_maps = None
+
+        if self.motion_enabled:
+            import motion_utils
+
+            # Match the video's relative path in the UCF-101 directory
+            # to the corresponding mirrored RAFT NPZ path.
+            rel_video_path = os.path.relpath(directory, self.root)
+            npz_path = os.path.join(
+                self.motion_root,
+                os.path.splitext(rel_video_path)[0] + ".npz"
+            )
+
+            motion_maps, diagnostics, metadata = (
+                motion_utils.match_tubelet_motion(
+                    npz_path,
+                    frame_id_list,
+                    tubelet_size=2,
+                    expected_raft_gap=self.motion_gap,
+                    missing_policy=self.motion_missing_policy
+                )
+            )
+
+            # Report alignment summary for this sample.
+            matched = sum(d["status"] == "matched" for d in diagnostics)
+            fallback = len(diagnostics) - matched
+
+            if fallback > 0:
+                print(
+                    f"[Motion alignment] {os.path.basename(directory)}: "
+                    f"{matched}/{len(diagnostics)} matched, "
+                    f"{fallback} zero-fallback"
+                )
+
+            process_data, mask, motion_tensor = self.transform(
+                (images, None),
+                motion_maps
+            )
+
+            process_data = process_data.view(
+                (self.new_length, 3) + process_data.size()[-2:]
+            ).transpose(0, 1)
+
+            return process_data, mask, motion_tensor
+
+        # Original motion-disabled path (preserve baseline behavior).
+        process_data, mask = self.transform((images, None))
+
+        process_data = process_data.view(
+            (self.new_length, 3) + process_data.size()[-2:]
+        ).transpose(0, 1)
+
+        return process_data, mask
 
     def __len__(self):
         return len(self.clips)
@@ -592,4 +655,4 @@ class VideoMAE(torch.utils.data.Dataset):
             sampled_list = [Image.fromarray(video_data[vid, :, :, :]).convert('RGB') for vid, _ in enumerate(frame_id_list)]
         except:
             raise RuntimeError('Error occured in reading frames {} from video {} of duration {}.'.format(frame_id_list, directory, duration))
-        return sampled_list
+        return sampled_list, frame_id_list

@@ -10,7 +10,7 @@ from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 def train_one_epoch(model: torch.nn.Module, data_loader: Iterable, optimizer: torch.optim.Optimizer,
                     device: torch.device, epoch: int, loss_scaler, max_norm: float = 0, patch_size: int = 16, 
                     normlize_target: bool = True, log_writer=None, lr_scheduler=None, start_steps=None,
-                    lr_schedule_values=None, wd_schedule_values=None):
+                    lr_schedule_values=None, wd_schedule_values=None, args=None):
     model.train()
     metric_logger = utils.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
@@ -30,9 +30,17 @@ def train_one_epoch(model: torch.nn.Module, data_loader: Iterable, optimizer: to
                 if wd_schedule_values is not None and param_group["weight_decay"] > 0:
                     param_group["weight_decay"] = wd_schedule_values[it]
 
-        videos, bool_masked_pos = batch
+        if len(batch) == 2:
+            videos, bool_masked_pos = batch
+            motion_maps = None
+        elif len(batch) == 3:
+            videos, bool_masked_pos, motion_maps = batch
+        else:
+            raise ValueError(f"Unexpected batch tuple length: {len(batch)}")
         videos = videos.to(device, non_blocking=True)
         bool_masked_pos = bool_masked_pos.to(device, non_blocking=True).flatten(1).to(torch.bool)
+        if motion_maps is not None:
+            motion_maps = motion_maps.to(device, non_blocking=True).flatten(1).float()
 
         with torch.no_grad():
             # calculate the predict label
@@ -54,7 +62,14 @@ def train_one_epoch(model: torch.nn.Module, data_loader: Iterable, optimizer: to
 
         with torch.cuda.amp.autocast():
             outputs = model(videos, bool_masked_pos)
-            loss = loss_func(input=outputs, target=labels)
+            if args is not None and getattr(args, 'motion_weighted_loss', False):
+                if motion_maps is None:
+                    raise RuntimeError("Motion-weighted loss requires motion maps in batch")
+                masked_motion = motion_maps[bool_masked_pos].reshape(B, -1)
+                from motion_utils import motion_weighted_mse
+                loss = motion_weighted_mse(outputs, labels, masked_motion, alpha=args.motion_alpha)
+            else:
+                loss = loss_func(input=outputs, target=labels)
 
         loss_value = loss.item()
 

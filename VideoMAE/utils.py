@@ -363,7 +363,7 @@ class NativeScalerWithGradNormCount:
     ):
         self._scaler.scale(loss).backward(create_graph=create_graph)
         if update_grad:
-            if clip_grad is not None:
+            if clip_grad is not None and clip_grad > 0:
                 assert parameters is not None
                 self._scaler.unscale_(optimizer)
                 norm = torch.nn.utils.clip_grad_norm_(
